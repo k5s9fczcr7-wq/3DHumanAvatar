@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kiosk Avatar — Admin</title>
+<style>
+  :root {
+    --bg: #0e1116;
+    --panel: #161b22;
+    --panel-2: #1d242d;
+    --border: #2a3138;
+    --text: #d8dee4;
+    --text-dim: #888f97;
+    --text-faint: #5a6068;
+    --accent: #58a6ff;
+    --good: #3fb950;
+    --warn: #d29922;
+    --bad: #f85149;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px;
+    background: var(--bg); color: var(--text);
+    font: 13px/1.4 -apple-system, "Segoe UI", "SF Pro Text", Inter, sans-serif;
+  }
+  h1 { font-size: 16px; margin: 0 0 12px 0; }
+  .links { color: var(--text-dim); font-size: 11px; margin-bottom: 14px; }
+  .links a { color: var(--accent); text-decoration: none; margin-right: 12px; }
+  .links a:hover { text-decoration: underline; }
+
+  .topbar {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+    padding: 12px; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .topbar .checked { color: var(--text-dim); font-size: 11px; margin-right: auto; }
+  button {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+    padding: 6px 14px; border-radius: 4px; cursor: pointer;
+    font: inherit; font-size: 12px; font-weight: 500;
+  }
+  button:hover:not(:disabled) { background: #252c35; border-color: var(--accent); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.danger { color: var(--bad); }
+  button.danger:hover:not(:disabled) { background: rgba(248, 81, 73, 0.1); border-color: var(--bad); }
+  button.warn { color: var(--warn); }
+  button.warn:hover:not(:disabled) { background: rgba(210, 153, 34, 0.1); border-color: var(--warn); }
+  button.good { color: var(--good); }
+  button.good:hover:not(:disabled) { background: rgba(63, 185, 80, 0.1); border-color: var(--good); }
+
+  .components {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+    overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th, td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
+  }
+  th {
+    color: var(--text-dim); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;
+    font-weight: 600;
+    background: var(--panel-2);
+  }
+  tr:last-child td { border-bottom: none; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 2px 10px; border-radius: 10px;
+    font-size: 11px; font-weight: 600;
+  }
+  .pill.up    { background: rgba(63, 185, 80, 0.15);  color: var(--good); }
+  .pill.down  { background: rgba(248, 81, 73, 0.15);  color: var(--bad); }
+  .pill.unknown { background: rgba(136, 143, 151, 0.15); color: var(--text-dim); }
+  .dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  }
+  .dot.up    { background: var(--good); box-shadow: 0 0 6px rgba(63, 185, 80, 0.8); }
+  .dot.down  { background: var(--bad); }
+  .dot.unknown { background: var(--text-dim); }
+
+  .name { font-weight: 600; }
+  .port { font-family: ui-monospace, monospace; color: var(--text-dim); font-size: 12px; }
+  .pid  { font-family: ui-monospace, monospace; color: var(--text-faint); font-size: 11px; }
+
+  .toast {
+    position: fixed; bottom: 16px; right: 16px;
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px 14px; font-size: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    opacity: 0; transition: opacity 0.2s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  .toast.error { border-color: var(--bad); color: var(--bad); }
+  .toast.warn { border-color: var(--warn); color: var(--warn); }
+
+  .offline-banner {
+    background: rgba(248, 81, 73, 0.1); border: 1px solid var(--bad); color: var(--bad);
+    border-radius: 6px; padding: 10px 14px; margin-bottom: 14px;
+    font-size: 12px; display: none;
+  }
+  .offline-banner.show { display: block; }
+
+  .mode-row { display: flex; align-items: center; gap: 14px; padding: 12px 14px; }
+  .mode-text { margin-right: auto; }
+  .mode-detail { color: var(--text-dim); font-size: 12px; margin-top: 2px; }
+  .mode-detail.warn { color: var(--warn); }
+  .row-sep { border-top: 1px solid var(--border); }
+  input[type=text], input[type=number] {
+    background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 4px; padding: 6px 8px; font: inherit; font-size: 12px;
+  }
+  input[type=text] { flex: 1; min-width: 0; }
+  input[type=number] { width: 70px; }
+  input:focus { outline: none; border-color: var(--accent); }
+  .opt { display: inline-flex; align-items: center; gap: 6px; color: var(--text); }
+  .opt .hint { color: var(--text-dim); font-size: 11px; }
+</style>
+</head>
+<body>
+
+<h1>Kiosk Avatar — Admin</h1>
+<div class="links">
+<a href="/admin/names">names</a>
+  <a href="/dashboard">interaction dashboard</a>
+  <a href="/health">health JSON</a>
+  <a href="/admin/status">status JSON</a>
+</div>
+
+<div id="offline" class="offline-banner">
+  Dashboard host (FastAPI :8100) is unreachable. The page will reconnect automatically once it's back up.
+  Run <code>start.bat</code> from a terminal if needed.
+</div>
+
+<div class="topbar">
+  <div class="checked" id="checked">checking...</div>
+  <button id="btn-start" class="good" onclick="action('start_all', false)">Start All</button>
+  <button id="btn-restart" class="warn" onclick="action('restart_all', true)">Restart All</button>
+  <button id="btn-stop" class="danger" onclick="action('stop_all', true)">Stop All</button>
+</div>
+
+<div class="components">
+  <table>
+    <thead>
+      <tr>
+        <th>Component</th>
+        <th style="width: 80px;">Port</th>
+        <th style="width: 90px;">State</th>
+        <th style="width: 100px;">PID</th>
+        <th style="width: 210px;">Control</th>
+      </tr>
+    </thead>
+    <tbody id="rows">
+      <tr><td colspan="5" style="color: var(--text-dim); text-align: center;">loading...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h1 style="margin-top:18px">Mode</h1>
+<div class="components">
+  <div class="mode-row">
+    <div class="mode-text">
+      <div class="name" id="mode-name">checking...</div>
+      <div class="mode-detail" id="mode-detail"></div>
+    </div>
+    <button id="btn-mode" class="warn" onclick="switchMode()" disabled>Switch</button>
+  </div>
+</div>
+
+<h1 style="margin-top:18px">Devices</h1>
+<div class="components">
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 200px;">Device</th>
+        <th style="width: 90px;">State</th>
+        <th>Detail</th>
+      </tr>
+    </thead>
+    <tbody id="devrows">
+      <tr><td colspan="3" style="color: var(--text-dim); text-align: center;">loading...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+  let pollErrors = 0;
+
+  async function poll() {
+    try {
+      const r = await fetch('/admin/status', { cache: 'no-store' });
+      if (!r.ok) throw new Error('http ' + r.status);
+      const data = await r.json();
+      render(data);
+      pollErrors = 0;
+      document.getElementById('offline').classList.remove('show');
+    } catch (e) {
+      pollErrors++;
+      // Two consecutive failures -> show the offline banner. FastAPI is probably stopping.
+      if (pollErrors >= 2) {
+        document.getElementById('offline').classList.add('show');
+        // Mark all components as unknown in the table
+        const tbody = document.getElementById('rows');
+        for (const tr of tbody.children) {
+          const pill = tr.querySelector('.pill');
+          if (pill) { pill.className = 'pill unknown'; pill.innerHTML = '<span class="dot unknown"></span>UNKNOWN'; }
+        }
+        document.getElementById('checked').textContent = 'last poll failed (FastAPI may be stopping or down)';
+      }
+    }
+  }
+
+  function render(data) {
+    const tbody = document.getElementById('rows');
+    tbody.innerHTML = '';
+    for (const c of data.components) {
+      const tr = document.createElement('tr');
+      const stateClass = c.state === 'up' ? 'up' : (c.state === 'down' ? 'down' : 'unknown');
+      const stateLabel = (c.state || 'unknown').toUpperCase();
+      const pidText = c.pid ? c.pid : '—';
+      const portText = c.port ? (':' + c.port) : '—';
+      // FastAPI serves this page, so it gets no self-stop button.
+      const ctl = (c.key && c.key !== 'fastapi') ? `
+        <button class="good" onclick="comp('start','${c.key}')">start</button>
+        <button class="warn" onclick="comp('restart','${c.key}')">restart</button>
+        <button class="danger" onclick="comp('stop','${c.key}')">stop</button>` : '—';
+      tr.innerHTML = `
+        <td class="name">${c.name}</td>
+        <td class="port">${portText}</td>
+        <td><span class="pill ${stateClass}"><span class="dot ${stateClass}"></span>${stateLabel}</span></td>
+        <td class="pid">${pidText}</td>
+        <td style="white-space:nowrap">${ctl}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    const dev = document.getElementById('devrows');
+    dev.innerHTML = '';
+    for (const d of (data.devices || [])) {
+      const cls = d.state === 'up' ? 'up' : (d.state === 'down' ? 'down' : 'unknown');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="name">${d.name}</td>
+        <td><span class="pill ${cls}"><span class="dot ${cls}"></span>${(d.state||'').toUpperCase()}</span></td>
+        <td style="color: var(--text-dim)">${d.detail || ''}</td>
+      `;
+      dev.appendChild(tr);
+    }
+
+    renderMode(data.identity);
+
+    const ts = data.checked_at ? new Date(data.checked_at) : new Date();
+    document.getElementById('checked').textContent = 'last check: ' + ts.toLocaleTimeString();
+  }
+
+  // Kiosk / Companion mode (kiosk_config.ini [identity] mode = multi_user / single_user). "running" is
+  // what the live orchestrator started in; null while it is down or starting.
+  const MODE_TEXT = {
+    multi_user:  ["Kiosk mode", "Visitors are recognized by face and sign in with a name and PIN; each has their own long-term memory. A guest who doesn't sign in is not remembered."],
+    single_user: ["Companion mode", "One person: no face recognition, no sign-in; whoever talks to her is that one person, with one long-term memory."],
+  };
+  let modeSwitching = null;   // target mode while a switch is under way
+
+  function modeName(m) { return (MODE_TEXT[m] || [m])[0]; }
+
+  function renderMode(id) {
+    if (!id) return;
+    const btn = document.getElementById('btn-mode');
+    const name = document.getElementById('mode-name');
+    const detail = document.getElementById('mode-detail');
+    detail.className = 'mode-detail';
+    if (modeSwitching) {
+      if (id.running === modeSwitching) {
+        showToast(`Now in ${modeName(modeSwitching)}`);
+        modeSwitching = null;
+      } else {
+        name.textContent = `Switching to ${modeName(modeSwitching)}...`;
+        detail.textContent = "She is restarting and will be silent for about 30 seconds.";
+        btn.disabled = true;
+        return;
+      }
+    }
+    const shown = id.running || id.configured;
+    const other = shown === 'single_user' ? 'multi_user' : 'single_user';
+    name.textContent = modeName(shown);
+    if (!id.running) {
+      detail.textContent = `${MODE_TEXT[shown][1]} The orchestrator isn't running; it will start in this mode.`;
+    } else if (id.running !== id.configured) {
+      detail.textContent = `Running ${modeName(id.running)}, but kiosk_config.ini says ${modeName(id.configured)}. Restart the orchestrator to apply.`;
+      detail.className = 'mode-detail warn';
+    } else {
+      detail.textContent = MODE_TEXT[shown][1];
+    }
+    btn.textContent = `Switch to ${modeName(other)}`;
+    btn.dataset.target = other;
+    btn.disabled = false;
+  }
+
+  async function switchMode() {
+    const target = document.getElementById('btn-mode').dataset.target;
+    const msg = target === 'single_user'
+      ? "Switch to COMPANION MODE?\n\nShe restarts and is silent for about 30 seconds. Then she treats whoever is in front of her as the same one person (no face recognition, no sign-in, no name), with one long-term memory of its own, kept apart from every Kiosk-mode visitor.\n\nA conversation in progress ends, and a signed-in visitor's current chat is not saved."
+      : "Switch to KIOSK MODE?\n\nShe restarts and is silent for about 30 seconds. Then visitors are recognized by face and sign in with a name and PIN, each with their own memory; a guest who doesn't sign in is not remembered. Companion-mode memory, including anything not yet saved, is kept for next time.\n\nThe conversation in progress ends.";
+    if (!window.confirm(msg)) return;
+    modeSwitching = target;
+    document.getElementById('btn-mode').disabled = true;
+    showToast(`Switching to ${modeName(target)}...`);
+    try {
+      const r = await fetch('/admin/identity_mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: target }),
+      });
+      const d = await r.json();
+      if (d.status === 'error') {
+        modeSwitching = null;
+        showToast(`Mode switch failed: ${d.detail || 'unknown error'}`, 'error');
+      } else if (d.action === 'config_updated') {
+        modeSwitching = null;
+        showToast(d.detail);
+      }
+    } catch (e) {
+      modeSwitching = null;
+      showToast(`Mode switch failed: ${e.message}`, 'error');
+    }
+    poll();
+  }
+
+  async function comp(action, key) {
+    showToast(`${action} ${key}...`);
+    try {
+      const r = await fetch(`/admin/${action}/${key}`, { method: 'POST' });
+      const d = await r.json();
+      showToast(`${key} ${action}: ${d.status}${d.action ? ' (' + d.action + ')' : ''}${d.detail ? ' — ' + d.detail : ''}`,
+                d.status === 'error' ? 'error' : '');
+    } catch (e) {
+      showToast(`${key} ${action} failed: ${e.message}`, 'error');
+    }
+    setTimeout(poll, 1200);
+  }
+
+  async function action(name, confirm_required) {
+    const labels = {
+      start_all: 'Start All',
+      stop_all: 'Stop All',
+      restart_all: 'Restart All',
+    };
+    const label = labels[name] || name;
+
+    if (confirm_required) {
+      const msg = name === 'stop_all'
+        ? 'Stop All will kill llama, orchestrator, and FastAPI itself. The dashboard will go offline. Continue?'
+        : 'Restart All will stop everything (~10s) then start the stack again (~2 min cold load). The dashboard will be unreachable during the gap. Continue?';
+      if (!window.confirm(msg)) return;
+    }
+
+    showToast(`${label} requested...`);
+    // Disable buttons briefly to prevent double-click during action spawn
+    setButtonsEnabled(false);
+    try {
+      const r = await fetch('/admin/' + name, { method: 'POST' });
+      const data = await r.json();
+      showToast(`${label}: ${data.status} (${data.action || ''})`);
+    } catch (e) {
+      showToast(`${label} failed: ${e.message}`, 'error');
+    } finally {
+      // Re-enable after a short delay — actions are async on the server.
+      setTimeout(() => setButtonsEnabled(true), 1500);
+    }
+  }
+
+  function setButtonsEnabled(enabled) {
+    for (const id of ['btn-start', 'btn-restart', 'btn-stop']) {
+      document.getElementById(id).disabled = !enabled;
+    }
+  }
+
+  function showToast(msg, kind) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (kind ? ' ' + kind : '');
+    clearTimeout(showToast._tid);
+    showToast._tid = setTimeout(() => { t.className = 'toast'; }, 3500);
+  }
+
+  // Poll every 2s, and immediately on load.
+  poll();
+  setInterval(poll, 2000);
+</script>
+
+</body>
+</html>

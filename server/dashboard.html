@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kiosk Avatar Dashboard</title>
+<style>
+  :root {
+    --bg: #0e1116;
+    --panel: #161b22;
+    --panel-2: #1d242d;
+    --border: #2a3138;
+    --text: #d8dee4;
+    --text-dim: #888f97;
+    --text-faint: #5a6068;
+    --accent: #58a6ff;
+    --good: #3fb950;
+    --warn: #d29922;
+    --bad: #f85149;
+
+    --col-id: 90px;
+    --col-time: 70px;
+    --col-ttfa: 90px;
+
+    --camera: rgb(60, 200, 220);
+    --recog: rgb(60, 200, 80);
+    --userid: rgb(180, 100, 255);
+    --ttsprompt: rgb(255, 100, 180);
+    --asrpin: rgb(255, 150, 60);
+
+    --mood-WARM: rgb(245, 200, 100);
+    --mood-UPBEAT: rgb(245, 145, 50);
+    --mood-CALM: rgb(100, 175, 240);
+    --mood-GENTLE: rgb(100, 230, 180);
+    --mood-DIRECT: rgb(245, 95, 95);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px;
+    background: var(--bg);
+    color: var(--text);
+    font: 13px/1.4 -apple-system, "Segoe UI", "SF Pro Text", Inter, sans-serif;
+  }
+
+  h1 { font-size: 16px; margin: 0 0 12px 0; }
+  h2 { font-size: 13px; font-weight: 600; margin: 0 0 8px 0; color: var(--text); }
+
+  .stats-card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+    padding: 12px; margin-bottom: 14px;
+  }
+  .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px 16px; }
+  .stat .lbl {
+    font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .stat .val { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .stat .val .unit { font-size: 12px; color: var(--text-dim); margin-left: 2px; }
+  .stat .sub { font-size: 11px; color: var(--text-dim); }
+
+  .legend {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px 12px; margin-bottom: 14px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px;
+  }
+  .legend-section .label {
+    color: var(--text-dim); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;
+    margin-bottom: 6px;
+  }
+  .legend-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .legend-row .item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+  .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px; }
+  .swatch.dot { border-radius: 50%; width: 10px; height: 10px; }
+
+  .timeline {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+    padding: 12px; margin-bottom: 14px;
+  }
+  .timeline-header {
+    display: grid; grid-template-columns: var(--col-id) var(--col-time) 1fr var(--col-ttfa); gap: 8px;
+    color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+    padding-bottom: 6px; border-bottom: 1px solid var(--border); margin-bottom: 6px;
+  }
+
+  .time-scale {
+    display: grid; grid-template-columns: var(--col-id) var(--col-time) 1fr var(--col-ttfa);
+    gap: 8px; margin-bottom: 6px;
+  }
+  .time-axis { position: relative; height: 18px; border-bottom: 1px solid var(--border); }
+  .time-tick {
+    position: absolute; bottom: 0; border-left: 1px solid var(--border);
+    padding: 2px 0 2px 4px; font: 10px ui-monospace, monospace; color: var(--text-faint);
+    height: 18px;
+  }
+  .time-tick.major { border-left-color: var(--text-dim); color: var(--text-dim); }
+
+  .turn-block {
+    border-bottom: 1px solid rgba(42,49,56,0.4);
+    padding: 4px 0 6px 0;
+  }
+  .turn-block:hover { background: rgba(255,255,255,0.015); }
+  .turn-row {
+    display: grid; grid-template-columns: var(--col-id) var(--col-time) 1fr var(--col-ttfa); gap: 8px;
+    align-items: center; cursor: pointer;
+  }
+  .turn-id { font-family: ui-monospace, monospace; font-size: 11px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; }
+  .turn-time { font-family: ui-monospace, monospace; font-size: 11px; color: var(--text-dim); }
+  .turn-bars {
+    height: 22px; position: relative;
+    background: rgba(255, 255, 255, 0.03); border-radius: 3px;
+  }
+  .stage-bar {
+    height: 100%; position: absolute; top: 0;
+    border-right: 1px solid rgba(0, 0, 0, 0.25);
+    transition: filter 0.1s; overflow: hidden;
+  }
+  .stage-bar:hover { filter: brightness(1.4); z-index: 10; }
+  .stage-bar .blbl {
+    position: absolute; top: 50%; left: 4px; transform: translateY(-50%);
+    font-size: 10px; font-weight: 500;
+    color: rgba(255, 255, 255, 0.92);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    white-space: nowrap; pointer-events: none;
+  }
+  .ttfa-marker {
+    position: absolute; top: -4px; bottom: -4px; width: 2px;
+    background: var(--accent); box-shadow: 0 0 4px var(--accent);
+  }
+  .ttfa-marker::after {
+    content: 'TTFA'; position: absolute; top: -14px; left: 4px;
+    font-size: 9px; font-weight: 600; color: var(--accent); letter-spacing: 0.05em;
+  }
+  .post-ttfa-tail {
+    position: absolute; top: 0; height: 100%;
+    background: repeating-linear-gradient(45deg,
+      rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 4px,
+      rgba(255,255,255,0.08) 4px, rgba(255,255,255,0.08) 8px);
+    border-right: 1px solid rgba(255,255,255,0.10);
+  }
+  .post-ttfa-tail::before {
+    content: 'rest of utterance'; position: absolute; left: 4px; top: 50%;
+    transform: translateY(-50%); font-size: 9px; color: var(--text-faint);
+    pointer-events: none;
+  }
+  .unaccounted-bar {
+    position: absolute; top: 0; height: 100%;
+    background: repeating-linear-gradient(135deg,
+      rgba(248,81,73,0.4) 0px, rgba(248,81,73,0.4) 4px,
+      transparent 4px, transparent 8px);
+    border: 1px dashed var(--bad);
+  }
+  .unaccounted-bar::before {
+    content: 'unaccounted'; position: absolute; left: 4px; top: 50%;
+    transform: translateY(-50%); font-size: 9px; color: var(--bad);
+    pointer-events: none;
+  }
+  .turn-ttfa {
+    text-align: right; font-family: ui-monospace, monospace; font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+  .ttfa-good { color: var(--good); }
+  .ttfa-warn { color: var(--warn); }
+  .ttfa-bad { color: var(--bad); }
+
+  .context-strip {
+    display: grid; grid-template-columns: var(--col-id) var(--col-time) 1fr var(--col-ttfa);
+    gap: 8px; margin-top: 3px; align-items: center; font-size: 11px;
+  }
+  .context-cells {
+    display: flex; gap: 0;
+    background: rgba(255,255,255,0.02); border-radius: 3px;
+    height: 22px; overflow: hidden; border: 1px solid rgba(255,255,255,0.04);
+  }
+  .ccell {
+    padding: 0 8px; display: flex; align-items: center; gap: 5px;
+    border-right: 1px solid rgba(255,255,255,0.06);
+    color: var(--text-dim); font-size: 11px; white-space: nowrap;
+  }
+  .ccell:last-child { border-right: none; }
+  .ccell:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+  .ccell .lbl { font-size: 9px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.05em; }
+  .mood-pill {
+    padding: 1px 6px; border-radius: 8px; font-size: 10px; font-weight: 600;
+    color: rgba(0,0,0,0.85);
+  }
+  .id-cell-name { font-weight: 600; color: var(--text); }
+  .id-cell-sim { font-family: ui-monospace, monospace; font-size: 10px; color: var(--text-dim); }
+
+  .id-event-block {
+    border-top: 2px solid var(--userid); border-bottom: 2px solid var(--userid);
+    background: rgba(180, 100, 255, 0.05);
+    margin: 6px 0; padding: 6px 0 14px 0;
+  }
+  .id-event-header {
+    display: grid; grid-template-columns: var(--col-id) var(--col-time) 1fr var(--col-ttfa); gap: 8px;
+    align-items: center; padding-bottom: 4px;
+  }
+  .id-event-title {
+    color: var(--userid); font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .id-event-summary { font-size: 11px; color: var(--text); }
+  .id-event-summary .name { font-weight: 600; }
+  .id-event-summary .sub { color: var(--text-dim); }
+  .id-milestones {
+    grid-column: 3 / 4; height: 32px; position: relative;
+    background: rgba(255,255,255,0.02); border-radius: 3px;
+  }
+  .id-milestone {
+    position: absolute; top: 50%; transform: translate(-50%, -50%);
+    width: 11px; height: 11px; border-radius: 50%;
+    box-shadow: 0 0 4px currentColor; cursor: pointer;
+  }
+
+  .tooltip {
+    position: fixed; background: #0a0d12; border: 1px solid var(--border);
+    border-radius: 5px; padding: 10px 12px; pointer-events: none;
+    z-index: 1000; max-width: 360px; font-size: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5); display: none;
+  }
+  .tooltip .stage-name { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+  .tooltip .tt-row { display: flex; justify-content: space-between; gap: 16px; padding: 1px 0; }
+  .tooltip .tt-row .k { color: var(--text-dim); }
+  .tooltip .tt-row .v { font-family: ui-monospace, monospace; }
+  .tooltip .tt-section { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
+  .tooltip .tt-section .label {
+    font-size: 10px; color: var(--text-dim); text-transform: uppercase;
+    letter-spacing: 0.05em; margin-bottom: 2px;
+  }
+  .tooltip .tt-section .lst { font-size: 11px; line-height: 1.5; }
+
+  .stats-table {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+    padding: 12px;
+  }
+  .stats-table table { width: 100%; border-collapse: collapse; }
+  .stats-table th, .stats-table td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+  .stats-table th {
+    color: var(--text-dim); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;
+    font-weight: 500;
+  }
+  .stats-table td { font-family: ui-monospace, monospace; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .stats-table td.label-cell { font-family: -apple-system, sans-serif; font-weight: 500; }
+  .stats-table td.swatch-cell { width: 22px; padding-right: 0; }
+  .stats-table td.target-met { color: var(--good); }
+  .stats-table td.target-near { color: var(--warn); }
+  .stats-table td.target-miss { color: var(--bad); }
+
+  .detail-panel {
+    padding: 8px 12px; background: rgba(255,255,255,0.02);
+    border-radius: 4px; margin: 4px 0 0 0; display: none;
+    border-left: 3px solid var(--accent);
+  }
+  .detail-panel.open { display: block; }
+  .detail-panel .transcript { font-style: italic; margin: 2px 0 6px 0; }
+  .detail-panel .raw { font-family: ui-monospace, monospace; font-size: 11px; color: var(--text-dim); }
+  .detail-panel .raw .resp { color: var(--text); }
+
+  .empty-state {
+    padding: 32px; text-align: center; color: var(--text-dim);
+    font-style: italic;
+  }
+  .refresh-indicator {
+    position: fixed; top: 14px; right: 18px;
+    font: 10px ui-monospace, monospace; color: var(--text-faint);
+  }
+</style>
+</head>
+<body>
+
+<h1>Kiosk Avatar Dashboard</h1>
+<div class="refresh-indicator" id="refresh-indicator">—</div>
+
+<div class="stats-card">
+  <h2>Last 50 turns</h2>
+  <div class="stats-grid" id="stats-grid">
+    <div class="stat"><div class="lbl">TTFA p50</div><div class="val" id="ttfa-p50">—</div><div class="sub">target 950 ms</div></div>
+    <div class="stat"><div class="lbl">TTFA p95</div><div class="val" id="ttfa-p95">—</div><div class="sub" id="ttfa-p95-sub">—</div></div>
+    <div class="stat"><div class="lbl">Total p50</div><div class="val" id="total-p50">—</div><div class="sub">includes full utterance</div></div>
+    <div class="stat"><div class="lbl">LLM tps p50</div><div class="val" id="tps-p50">—</div><div class="sub">tokens/sec</div></div>
+    <div class="stat"><div class="lbl">Sessions</div><div class="val" id="session-count">—</div><div class="sub">distinct in buffer</div></div>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="legend-section">
+    <div class="label">Conversation stages — RGB encoding</div>
+    <div class="legend-row">
+      <span class="item"><span class="swatch" style="background: rgb(230,60,60)"></span> R · Primary GPU</span>
+      <span class="item"><span class="swatch" style="background: rgb(60,200,80)"></span> G · Secondary GPU</span>
+      <span class="item"><span class="swatch" style="background: rgb(60,100,230)"></span> B · CPU</span>
+      <span class="item"><span class="swatch" style="background: repeating-linear-gradient(135deg, rgba(248,81,73,0.6) 0 2px, transparent 2px 5px); border: 1px dashed var(--bad)"></span> unaccounted gap</span>
+    </div>
+  </div>
+  <div class="legend-section">
+    <div class="label">Identity event milestones — by component</div>
+    <div class="legend-row">
+      <span class="item"><span class="swatch dot" style="background: var(--camera)"></span> camera / face_tracker</span>
+      <span class="item"><span class="swatch dot" style="background: var(--recog)"></span> face_recognizer</span>
+      <span class="item"><span class="swatch dot" style="background: var(--userid)"></span> user_identification</span>
+      <span class="item"><span class="swatch dot" style="background: var(--ttsprompt)"></span> system TTS</span>
+      <span class="item"><span class="swatch dot" style="background: var(--asrpin)"></span> ASR (auth)</span>
+    </div>
+  </div>
+</div>
+
+<div class="timeline">
+  <h2>Session timeline — most recent first <span style="color: var(--text-dim); font-weight: normal; font-size: 11px;">(click row to expand)</span></h2>
+  <div class="timeline-header">
+    <div>turn</div>
+    <div>time</div>
+    <div>conversation: end-of-utterance → TTFA → rest of utterance</div>
+    <div style="text-align: right;">TTFA</div>
+  </div>
+  <div class="time-scale">
+    <div></div><div></div>
+    <div class="time-axis" id="time-axis"></div>
+    <div></div>
+  </div>
+  <div id="rows"><div class="empty-state">Waiting for first turn…</div></div>
+</div>
+
+<div class="stats-table">
+  <h2>Per-stage stats — last 50 turns</h2>
+  <table>
+    <thead>
+      <tr>
+        <th></th><th>Stage</th><th>Hardware</th><th>p50</th><th>p95</th><th>p99</th><th>Target</th>
+      </tr>
+    </thead>
+    <tbody id="stats-body"></tbody>
+  </table>
+</div>
+
+<div class="tooltip" id="tt"></div>
+
+<script>
+const STAGES = [
+  { key: 'vad_dispatch_ms', label: 'VAD', color: 'rgb(60, 100, 230)', hardware: 'CPU', target: 10,
+    components: ['orchestrator/_run_mic_capture', 'asyncio.create_task scheduling', 'numpy buffer concat'],
+    knob: 'event-loop overhead; spikes mean orchestrator was busy' },
+  { key: 'asr_processing_ms', label: 'STT', color: 'rgb(60, 200, 80)', hardware: 'Secondary GPU', target: 350,
+    components: ['faster-whisper large-v3-turbo', 'cuda:1 · float16 · beam_size=5 · vad_filter=True', 'orchestrator/_run_asr'],
+    knob: 'beam_size=1 trades quality for ~30% speed; or quantize' },
+  { key: 'llm_client_ms', label: 'LLM (client)', color: 'rgb(40, 60, 140)', hardware: 'CPU', target: 30,
+    components: ['Orchestrator → FastAPI /llm/generate (HTTP/SSE)', 'JSON parsing, asyncio scheduling, stream decode',
+                 'server/llm_gateway.py + orchestrator'],
+    knob: 'orchestrator-side overhead beyond llama TTFT' },
+  { key: 'llm_ttft_ms', label: 'LLM (TTFT)', color: 'rgb(230, 60, 60)', hardware: 'Primary GPU', target: 150,
+    components: ['llama-server (GGUF model)', 'cuda:0 · --ngl 99 --flash-attn on',
+                 'session-pinned cache via session_id'],
+    knob: 'cache miss when prompt prefix changes; verify history is byte-stable' },
+  { key: 'llm_first_sentence_ms', label: 'LLM (gen → 1st sent.)', color: 'rgb(160, 40, 40)', hardware: 'Primary GPU', target: 400,
+    components: ['llama-server token generation', 'orchestrator sentence-boundary regex'],
+    knob: 'shorter system prompt → shorter responses; or smaller model' },
+  { key: 'tts_ms', label: 'TTS', color: 'rgb(255, 100, 130)', hardware: 'Primary GPU', target: 700,
+    components: ['Orchestrator → FastAPI /tts/synthesize', 'Chatterbox Turbo · voice clone from ReferenceVoice.wav',
+                 'WAV write to %TEMP%'],
+    knob: 'streaming TTS would shave ~300 ms off first audio' },
+  { key: 'ws_speak_send_ms', label: 'WS dispatch', color: 'rgb(80, 110, 180)', hardware: 'CPU', target: 5,
+    components: ['Orchestrator WebSocket :8765 → UE5 (localhost)', 'JSON {"type":"speak","path":...}',
+                 'orchestrator/_send_to_ue'],
+    knob: 'should always be <5 ms; spikes mean WS contention' },
+];
+const ID_COMPONENTS = {
+  camera:    { color: 'var(--camera)',    label: 'face_tracker',                        hardware: 'CPU + USB camera',         knob: 'CAP_PROP_FOURCC=MJPG required for USB 2 stability' },
+  recog:     { color: 'var(--recog)',     label: 'face_recognizer (dlib)',              hardware: 'CPU',                      knob: 'embedding distance threshold; 0.6 strict, 0.9 lenient' },
+  userid:    { color: 'var(--userid)',    label: 'user_identification (state machine)', hardware: 'CPU',                      knob: '11-state PIN flow; tunable per-state timeouts' },
+  ttsprompt: { color: 'var(--ttsprompt)', label: 'system TTS prompt',                   hardware: 'Primary GPU (Chatterbox)', knob: 'pre-rendered prompts could remove this latency' },
+  asrpin:    { color: 'var(--asrpin)',    label: 'user response (Whisper)',             hardware: 'Secondary GPU',            knob: 'PIN format normalization needed' },
+};
+
+let GLOBAL_MAX_MS = 4000;
+
+function ttfaClass(ms) {
+  if (!ms) return '';
+  if (ms <= 1500) return 'ttfa-good';
+  if (ms <= 2500) return 'ttfa-warn';
+  return 'ttfa-bad';
+}
+function el(tag, cls, text) {
+  const d = document.createElement(tag);
+  if (cls) d.className = cls;
+  if (text !== undefined && text !== null) d.textContent = text;
+  return d;
+}
+function fmtTime(ts) {
+  if (!ts) return '—';
+  return new Date(ts * 1000).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+}
+function pct(arr, p) {
+  const sorted = [...arr].sort((a, b) => a - b);
+  if (!sorted.length) return 0;
+  return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))];
+}
+
+function renderTimeAxis() {
+  const axis = document.getElementById('time-axis');
+  axis.innerHTML = '';
+  const maxS = Math.ceil(GLOBAL_MAX_MS / 1000);
+  for (let s = 0; s <= maxS; s++) {
+    const tick = el('div', 'time-tick' + (s % 5 === 0 || s === maxS ? ' major' : ''));
+    tick.style.left = (s * 1000 / GLOBAL_MAX_MS * 100) + '%';
+    tick.textContent = s + 's';
+    axis.appendChild(tick);
+  }
+}
+
+function renderTurn(turn) {
+  const block = el('div', 'turn-block');
+  const row = el('div', 'turn-row');
+  row.appendChild(el('div', 'turn-id', turn.turn_id || '—'));
+  row.appendChild(el('div', 'turn-time', fmtTime(turn.timestamp)));
+
+  const t = turn.timings || {};
+  const bars = el('div', 'turn-bars');
+  const widthScale = 100 / GLOBAL_MAX_MS;
+
+  let acc = 0;
+  for (const stage of STAGES) {
+    const ms = t[stage.key] || 0;
+    if (ms <= 0) continue;
+    const bar = el('div', 'stage-bar');
+    bar.style.background = stage.color;
+    bar.style.width = (ms * widthScale) + '%';
+    bar.style.left = (acc * widthScale) + '%';
+    bar.appendChild(el('div', 'blbl', stage.label));
+    bar.addEventListener('mouseenter', e => showStageTooltip(e, stage, ms));
+    bar.addEventListener('mousemove', moveTooltip);
+    bar.addEventListener('mouseleave', hideTooltip);
+    bars.appendChild(bar);
+    acc += ms;
+  }
+
+  const unaccounted = t.unaccounted_ms || 0;
+  if (unaccounted > 0) {
+    const u = el('div', 'unaccounted-bar');
+    u.style.left = (acc * widthScale) + '%';
+    u.style.width = (unaccounted * widthScale) + '%';
+    u.title = `unaccounted: ${unaccounted} ms — measurement gap`;
+    bars.appendChild(u);
+    acc += unaccounted;
+  }
+
+  if (t.ttfa_ms) {
+    const marker = el('div', 'ttfa-marker');
+    marker.style.left = (t.ttfa_ms * widthScale) + '%';
+    bars.appendChild(marker);
+  }
+  if (t.utterance_tail_ms > 0) {
+    const tail = el('div', 'post-ttfa-tail');
+    tail.style.left = (t.ttfa_ms * widthScale) + '%';
+    tail.style.width = (t.utterance_tail_ms * widthScale) + '%';
+    tail.title = `rest of utterance: ${t.utterance_tail_ms} ms`;
+    bars.appendChild(tail);
+  }
+  row.appendChild(bars);
+
+  const ttfaCell = el('div', 'turn-ttfa ' + ttfaClass(t.ttfa_ms));
+  ttfaCell.textContent = t.ttfa_ms ? Math.round(t.ttfa_ms).toLocaleString() + ' ms' : '—';
+  row.appendChild(ttfaCell);
+  block.appendChild(row);
+
+  const ctx = turn.ctx || {};
+  if (Object.keys(ctx).length > 0) {
+    const strip = el('div', 'context-strip');
+    strip.appendChild(el('div'));
+    strip.appendChild(el('div'));
+    const cells = el('div', 'context-cells');
+    if (ctx.id) {
+      const c = el('div', 'ccell');
+      c.appendChild(el('span', 'lbl', 'id'));
+      c.appendChild(el('span', 'id-cell-name', ctx.id));
+      if (ctx.id_sim) c.appendChild(el('span', 'id-cell-sim', 'sim ' + ctx.id_sim.toFixed(2)));
+      c.title = 'face_recognizer: confident match · embedding from dlib · faces.db lookup';
+      cells.appendChild(c);
+    }
+    if (ctx.face_emo) {
+      const c = el('div', 'ccell');
+      c.appendChild(el('span', 'lbl', 'face'));
+      c.appendChild(el('span', '', ctx.face_emo));
+      c.title = 'HSEmotion ONNX · 8 AffectNet classes · ~10 Hz on Logitech C920';
+      cells.appendChild(c);
+    }
+    if (ctx.voice_emo) {
+      const c = el('div', 'ccell');
+      c.appendChild(el('span', 'lbl', 'voice'));
+      c.appendChild(el('span', '', ctx.voice_emo));
+      c.title = 'emotion2vec / FunASR — 7 effective classes after collapse';
+      cells.appendChild(c);
+    }
+    if (ctx.mood_to) {
+      const c = el('div', 'ccell');
+      c.appendChild(el('span', 'lbl', 'mood'));
+      const pill = el('span', 'mood-pill', ctx.mood_to);
+      pill.style.background = `var(--mood-${ctx.mood_to})` || 'rgba(255,255,255,0.1)';
+      c.appendChild(pill);
+      c.title = 'EmotionMoodLibrary fuses face + voice → drives LLM temperature/persona';
+      cells.appendChild(c);
+    }
+    if (ctx.avatar_emo) {
+      const c = el('div', 'ccell');
+      c.appendChild(el('span', 'lbl', 'avatar'));
+      const pill = el('span', 'mood-pill', `${ctx.avatar_emo}${ctx.avatar_int ? ' ' + ctx.avatar_int : ''}`);
+      pill.style.background = 'rgba(255, 200, 80, 0.85)';
+      pill.style.color = '#1a1407';
+      c.appendChild(pill);
+      c.title = 'LLM <<emotion:X intensity:N>> directive — 1 of 12';
+      cells.appendChild(c);
+    }
+    strip.appendChild(cells);
+    strip.appendChild(el('div'));
+    block.appendChild(strip);
+  }
+
+  if (turn.transcript || turn.response) {
+    const detail = el('div', 'detail-panel');
+    const tx = (turn.transcript || '—').replace(/</g, '&lt;');
+    const rs = (turn.response || '—').replace(/</g, '&lt;');
+    detail.innerHTML = `<div class="transcript">User: ${tx}</div><div class="raw">Avatar: <span class="resp">${rs}</span></div>`;
+    block.appendChild(detail);
+    row.addEventListener('click', () => detail.classList.toggle('open'));
+  }
+  return block;
+}
+
+function renderIdEventCluster(events) {
+  if (!events.length) return null;
+  const block = el('div', 'id-event-block');
+  const header = el('div', 'id-event-header');
+  header.appendChild(el('div', 'id-event-title', '◆ ID'));
+  header.appendChild(el('div', 'turn-time', fmtTime(events[0].timestamp)));
+
+  const t0 = events[0].timestamp;
+  const tEnd = events[events.length - 1].timestamp;
+  const totalMs = Math.max((tEnd - t0) * 1000, 1000);
+
+  const ms = el('div', 'id-milestones');
+  for (const ev of events) {
+    const dot = el('div', 'id-milestone');
+    const c = ID_COMPONENTS[ev.component] || { color: 'var(--text-dim)', label: ev.component, hardware: '?', knob: '' };
+    dot.style.background = c.color;
+    dot.style.color = c.color;
+    dot.style.left = ((ev.timestamp - t0) * 1000 / totalMs * 100) + '%';
+    dot.addEventListener('mouseenter', e => showIdMilestoneTooltip(e, ev, c));
+    dot.addEventListener('mousemove', moveTooltip);
+    dot.addEventListener('mouseleave', hideTooltip);
+    ms.appendChild(dot);
+  }
+  header.appendChild(ms);
+
+  const summary = el('div', 'id-event-summary');
+  const headline = events.find(e => e.kind === 'pin_verified') || events.find(e => e.kind === 'confident_match');
+  if (headline && headline.data && headline.data.name) {
+    summary.appendChild(el('span', 'name', headline.data.name + ' '));
+    if (headline.data.sim) {
+      summary.appendChild(el('span', 'sub', `sim ${headline.data.sim.toFixed(2)} · ${(totalMs/1000).toFixed(1)}s`));
+    } else {
+      summary.appendChild(el('span', 'sub', `· ${(totalMs/1000).toFixed(1)}s`));
+    }
+  } else {
+    summary.appendChild(el('span', 'sub', `${events.length} events · ${(totalMs/1000).toFixed(1)}s`));
+  }
+  header.appendChild(summary);
+  block.appendChild(header);
+  return block;
+}
+
+const tt = document.getElementById('tt');
+function showStageTooltip(e, stage, ms) {
+  const rows = stage.components.map(c => `<div>• ${c}</div>`).join('');
+  tt.innerHTML = `
+    <div class="stage-name" style="color: ${stage.color};">${stage.label}</div>
+    <div class="tt-row"><span class="k">duration</span> <span class="v">${Math.round(ms).toLocaleString()} ms</span></div>
+    <div class="tt-row"><span class="k">target</span> <span class="v">≤ ${stage.target} ms</span></div>
+    <div class="tt-row"><span class="k">hardware</span> <span class="v">${stage.hardware}</span></div>
+    <div class="tt-section"><div class="label">Component(s)</div><div class="lst">${rows}</div></div>
+    <div class="tt-section"><div class="label">Tunable</div><div class="lst" style="font-style: italic; color: var(--text-dim);">${stage.knob}</div></div>
+  `;
+  tt.style.display = 'block';
+  moveTooltip(e);
+}
+function showIdMilestoneTooltip(e, ev, comp) {
+  const txt = (ev.text || ev.kind).replace(/</g, '&lt;');
+  tt.innerHTML = `
+    <div class="stage-name" style="color: ${comp.color};">${comp.label}</div>
+    <div class="tt-row"><span class="k">event</span> <span class="v" style="font-family: -apple-system, sans-serif;">${txt}</span></div>
+    <div class="tt-row"><span class="k">when</span> <span class="v">${fmtTime(ev.timestamp)}</span></div>
+    <div class="tt-row"><span class="k">hardware</span> <span class="v">${comp.hardware}</span></div>
+    <div class="tt-section"><div class="label">Tunable</div><div class="lst" style="font-style: italic; color: var(--text-dim);">${comp.knob || '—'}</div></div>
+  `;
+  tt.style.display = 'block';
+  moveTooltip(e);
+}
+function moveTooltip(e) {
+  const margin = 12; const rect = tt.getBoundingClientRect();
+  let x = e.clientX + margin, y = e.clientY + margin;
+  if (x + rect.width > window.innerWidth) x = e.clientX - margin - rect.width;
+  if (y + rect.height > window.innerHeight) y = e.clientY - margin - rect.height;
+  tt.style.left = x + 'px'; tt.style.top = y + 'px';
+}
+function hideTooltip() { tt.style.display = 'none'; }
+
+function renderStats(turns) {
+  const tbody = document.getElementById('stats-body');
+  tbody.innerHTML = '';
+  for (const stage of STAGES) {
+    const vals = turns.map(t => (t.timings || {})[stage.key]).filter(v => v && v > 0);
+    const p50 = pct(vals, 0.50), p95 = pct(vals, 0.95), p99 = pct(vals, 0.99);
+    const status = !vals.length ? '' : p50 <= stage.target ? 'target-met' : p50 <= stage.target * 1.5 ? 'target-near' : 'target-miss';
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td class="swatch-cell"><span class="swatch" style="background: ${stage.color}; width: 12px; height: 12px"></span></td>
+      <td class="label-cell">${stage.label}</td>
+      <td>${stage.hardware}</td>
+      <td class="${status}">${vals.length ? Math.round(p50).toLocaleString() + ' ms' : '—'}</td>
+      <td>${vals.length ? Math.round(p95).toLocaleString() + ' ms' : '—'}</td>
+      <td>${vals.length ? Math.round(p99).toLocaleString() + ' ms' : '—'}</td>
+      <td style="color: var(--text-dim);">≤ ${stage.target} ms</td>
+    `;
+    tbody.appendChild(row);
+  }
+}
+
+function renderTopStats(turns) {
+  const ttfas = turns.map(t => (t.timings || {}).ttfa_ms).filter(v => v && v > 0);
+  const totals = turns.map(t => (t.timings || {}).total_pipeline_ms || (t.timings || {}).total_e2e_ms).filter(v => v && v > 0);
+  const tps = turns.map(t => (t.timings || {}).llm_tps).filter(v => v && v > 0);
+  const sessions = new Set(turns.map(t => t.session_id).filter(Boolean));
+  document.getElementById('ttfa-p50').innerHTML = ttfas.length ? Math.round(pct(ttfas, 0.50)).toLocaleString() + '<span class="unit">ms</span>' : '—';
+  document.getElementById('ttfa-p95').innerHTML = ttfas.length ? Math.round(pct(ttfas, 0.95)).toLocaleString() + '<span class="unit">ms</span>' : '—';
+  const over3s = ttfas.filter(v => v > 3000).length;
+  document.getElementById('ttfa-p95-sub').textContent = ttfas.length ? `${over3s} of ${ttfas.length} over 3 s` : '—';
+  document.getElementById('total-p50').innerHTML = totals.length ? Math.round(pct(totals, 0.50)).toLocaleString() + '<span class="unit">ms</span>' : '—';
+  document.getElementById('tps-p50').innerHTML = tps.length ? Math.round(pct(tps, 0.50)) + '<span class="unit">tps</span>' : '—';
+  document.getElementById('session-count').textContent = sessions.size || '—';
+}
+
+function clusterEvents(events) {
+  const bySession = {};
+  for (const ev of events) {
+    if (!ev.session_id) continue;
+    (bySession[ev.session_id] = bySession[ev.session_id] || []).push(ev);
+  }
+  for (const sid in bySession) bySession[sid].sort((a, b) => a.timestamp - b.timestamp);
+  return bySession;
+}
+
+function renderTimeline(turns, events) {
+  const rowsEl = document.getElementById('rows');
+  rowsEl.innerHTML = '';
+
+  if (!turns.length && !events.length) {
+    rowsEl.innerHTML = '<div class="empty-state">Waiting for first turn…</div>';
+    return;
+  }
+
+  const maxTurn = Math.max(0, ...turns.map(t => {
+    const tt = t.timings || {};
+    return (tt.total_pipeline_ms || (tt.ttfa_ms ? tt.ttfa_ms + (tt.utterance_tail_ms || 0) : 0));
+  }));
+  GLOBAL_MAX_MS = Math.max(4000, Math.ceil(maxTurn / 1000) * 1000);
+  renderTimeAxis();
+
+  const eventClusters = clusterEvents(events);
+  const items = [];
+  for (const turn of turns) items.push({ kind: 'turn', timestamp: turn.timestamp, payload: turn });
+  for (const sid in eventClusters) {
+    const evs = eventClusters[sid];
+    items.push({ kind: 'idCluster', timestamp: evs[0].timestamp, payload: evs });
+  }
+  items.sort((a, b) => b.timestamp - a.timestamp);
+
+  for (const item of items) {
+    if (item.kind === 'turn') {
+      rowsEl.appendChild(renderTurn(item.payload));
+    } else {
+      const block = renderIdEventCluster(item.payload);
+      if (block) rowsEl.appendChild(block);
+    }
+  }
+}
+
+async function refresh() {
+  try {
+    const [turnsResp, eventsResp] = await Promise.all([
+      fetch('/telemetry/recent?limit=50'),
+      fetch('/telemetry/events/recent?limit=200').catch(() => ({ json: () => ({ events: [] }) })),
+    ]);
+    const turnsData = await turnsResp.json();
+    let eventsData = { events: [] };
+    try { eventsData = await eventsResp.json(); } catch (_) {}
+    const turns = (turnsData.turns || []);
+    const events = (eventsData.events || []);
+    renderTopStats(turns);
+    renderStats(turns);
+    renderTimeline(turns, events);
+    document.getElementById('refresh-indicator').textContent = 'updated ' + new Date().toLocaleTimeString();
+  } catch (e) {
+    document.getElementById('refresh-indicator').textContent = 'fetch error: ' + e.message;
+  }
+}
+refresh();
+setInterval(refresh, 3000);
+</script>
+</body>
+</html>

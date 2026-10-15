@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Downloaded models and tools (see SETUP.md)
+server/models/
+server/llama-server/
+
+# Runtime data and logs hold personal data: never commit them
+server/data/*
+!server/data/.gitkeep
+server/logs/*
+!server/logs/.gitkeep
+server/diag/
+server/*.db
+server/*.db-*
+server/*.wav
+
+# Unreal build output, plugins and the content you add yourself
+unreal/Binaries/
+unreal/Intermediate/
+unreal/Saved/
+unreal/DerivedDataCache/
+unreal/Plugins/
+unreal/Content/
+unreal/.vs/
+unreal/*.sln
+unreal/Build/
+
+# Editor and IDE settings (they can hold local paths)
+.vscode/
+.idea/
+*.code-workspace
+
+# Packaged builds
+packaged/

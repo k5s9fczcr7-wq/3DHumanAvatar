@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kiosk Avatar — Names</title>
+<style>
+  :root {
+    --bg: #0e1116; --panel: #161b22; --panel-2: #1d242d; --border: #2a3138;
+    --text: #d8dee4; --text-dim: #888f97; --text-faint: #5a6068;
+    --accent: #58a6ff; --good: #3fb950; --warn: #d29922; --bad: #f85149;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--text);
+         font: 13px/1.45 -apple-system, "Segoe UI", "SF Pro Text", Inter, sans-serif; }
+  h1 { font-size: 16px; margin: 0 0 4px 0; }
+  .links { color: var(--text-dim); font-size: 11px; margin-bottom: 12px; }
+  .links a { color: var(--accent); text-decoration: none; margin-right: 12px; }
+  .intro { color: var(--text-dim); max-width: 860px; margin: 0 0 12px 0; }
+  .topbar { background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+            padding: 10px 12px; margin-bottom: 14px; display: flex; align-items: center;
+            gap: 8px; flex-wrap: wrap; position: sticky; top: 0; z-index: 5; }
+  .topbar .status { color: var(--text-dim); font-size: 12px; margin-right: auto; }
+  button { background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+           padding: 5px 11px; border-radius: 4px; cursor: pointer; font: inherit; font-size: 12px; }
+  button:hover:not(:disabled) { background: #252c35; border-color: var(--accent); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.good { color: var(--good); } button.rec { color: var(--bad); border-color: var(--bad); }
+  button.play { padding: 3px 8px; }
+  input[type=text] { background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+                     border-radius: 4px; padding: 5px 8px; font: inherit; font-size: 12px; width: 190px; }
+  .grouphead { margin: 18px 0 6px; font-size: 11px; letter-spacing: 0.08em;
+               text-transform: uppercase; color: var(--text-dim); }
+  .grouphead .n { color: var(--text-faint); }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+          padding: 9px 12px; margin-bottom: 7px; }
+  .card.done { opacity: 0.45; }
+  .head { display: flex; align-items: baseline; gap: 10px; }
+  .rank { color: var(--text-faint); font-size: 11px; min-width: 34px; }
+  .word { font-weight: 650; font-size: 14px; }
+  .uses { color: var(--text-dim); font-size: 12px; }
+  .badge { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 3px;
+           padding: 1px 6px; border: 1px solid var(--border); color: var(--text-dim); }
+  .badge.review { color: var(--warn); border-color: #5c4a1c; }
+  .badge.unresolved { color: var(--bad); border-color: #5c2522; }
+  .badge.listen { color: var(--accent); border-color: #1f3b5c; }
+  .line { margin: 4px 0 0 44px; color: var(--text-dim); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .line b { color: var(--text); font-weight: 600; }
+  .ipa { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: var(--text-faint); }
+  .actions { margin: 7px 0 0 44px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .result { margin: 7px 0 0 44px; padding: 7px 9px; background: var(--panel-2); border-radius: 5px; display: none; }
+  .result.show { display: block; }
+  .jobq { margin: 10px 0; padding: 8px 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; }
+  .jobq a { margin-right: 6px; }
+  .opt { display: flex; gap: 8px; align-items: center; margin: 3px 0; }
+  .opt .sp { min-width: 170px; font-weight: 600; }
+  .ok { color: var(--good); } .meh { color: var(--warn); } .no { color: var(--bad); }
+  .reader { background: var(--panel); border: 1px solid var(--accent); border-radius: 8px;
+            padding: 18px; margin-bottom: 14px; text-align: center; }
+  .reader .big { font-size: 34px; font-weight: 700; margin: 8px 0; }
+  .reader .hint { color: var(--text-dim); }
+  .reader .queue { color: var(--text-faint); font-size: 12px; margin-top: 8px; }
+  .note { color: var(--warn); margin: 6px 0; }
+  .order { margin: 0 0 8px 0; color: var(--text-dim); font-size: 12px; }
+  .settled { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px; }
+  .settled .card { margin: 0; display: flex; align-items: center; gap: 8px; }
+  .settled .file { color: var(--text-faint); font-size: 11px; margin-left: auto; }
+</style>
+</head>
+<body>
+<h1>Names</h1>
+<div class="links"><a href="/admin">admin</a></div>
+<p class="intro">How the avatar says the names in her knowledge base. The pronunciation check fixes a name by itself
+only when the dictionary and the LLM agree; the names below need a person. For each one you can
+<b>use</b> a proposal, <b>say it</b> yourself (your recording becomes the target and her voice is fitted to it),
+<b>type</b> a respelling, or mark it <b>fine</b>. Fixes change only what her voice reads — what she writes
+and remembers keeps the real name — and apply within seconds.</p>
+
+<div class="topbar">
+  <span class="status" id="status">Loading…</span>
+  <button id="readBtn" title="Say each name in turn; each is checked while you go on">Read the list aloud</button>
+  <button id="listenBtn"></button>
+  <button id="refreshBtn">Refresh</button>
+</div>
+<div id="micNote" class="note" hidden></div>
+
+<div id="reader" class="reader" hidden>
+  <div class="hint" id="readerPos"></div>
+  <div class="big" id="readerWord"></div>
+  <div class="hint" id="readerHint">Press <b>Space</b> to start recording, <b>Space</b> again to stop. <b>→</b> skips, <b>Esc</b> ends.</div>
+  <div class="queue" id="readerQueue"></div>
+</div>
+
+<div id="jobq" class="jobq" hidden></div>
+<div class="grouphead">Needs you <span class="n" id="nItems"></span></div>
+<div id="order" class="order"></div>
+<div id="items"></div>
+<div class="grouphead">Confirmed on this page <span class="n" id="nConfirmed"></span>
+  <button id="playConfirmed" title="Each confirmed name once, in the order you confirmed them, the way she says it now - played here in the browser">▶ Hear the confirmed names in a row</button>
+  <button id="sayConfirmed" title="She says them at the kiosk, through her real voice path (the orchestrator applies the respellings it has loaded) - proof they were picked up">🔊 Have her say them at the kiosk</button></div>
+<div id="confirmed" class="line" style="margin-left:0"></div>
+<div class="grouphead">Set by hand <span class="n" id="nSettled"></span></div>
+<div id="settled" class="settled"></div>
+
+<script>
+const SENTENCE = w => `I can tell you about ${w} today.`;
+let state = { items: [], settled: [], takes: 5, majority: 4, paused: false };
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const $ = id => document.getElementById(id);
+
+async function api(path, body) {
+  const opt = body instanceof FormData ? { method: "POST", body }
+            : body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {};
+  const r = await fetch(path, opt);
+  if (!r.ok) throw new Error(`${path}: HTTP ${r.status}`);
+  return r;
+}
+
+// ── Playing her voice ──────────────────────────────────────────────────────
+const player = new Audio();
+const played = new Set();     // names with a take played (as spelled or a respelling): "She's fine" keeps her to it
+async function speak(spelling, btn, word, typed) {
+  if (btn) btn.disabled = true;
+  try {
+    const body = { text: SENTENCE(spelling) };
+    if (word) { body.word = word; played.add(word); if (typed) body.spelling = spelling; }
+    const blob = await (await api("/admin/names/speak", body)).blob();
+    player.src = URL.createObjectURL(blob);
+    await player.play();
+  } catch (e) { alert("Couldn't play: " + e.message); }
+  finally { if (btn) btn.disabled = false; }
+}
+const playBtn = (spelling, label) =>
+  `<button class="play" data-play="${esc(spelling)}" title="Hear her say: ${esc(SENTENCE(spelling))}">▶ ${esc(label ?? "")}</button>`;
+
+// ── Recording (WAV in the browser: nothing to install server-side) ─────────
+// The mic stays open while you record names (released after a minute unused)
+// so a take isn't clipped by the mic starting up; "say it now" shows only
+// once sound is flowing; after Stop it keeps listening 0.4 s for the last
+// syllable. Raw capture: the browser's noise suppression chops word starts,
+// and the kiosk mic cleans up its own sound.
+let mic = null, rec = null, micIdle = null;
+function micProblem() {
+  if (!window.isSecureContext || !navigator.mediaDevices)
+    return "Recording needs this page opened as http://localhost:8100/admin/names on the kiosk PC — browsers only allow the microphone on localhost or HTTPS.";
+  return null;
+}
+let micLabel = "";
+async function ensureMic() {
+  clearTimeout(micIdle);
+  if (mic) return mic;
+  const want = { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+  let stream = await navigator.mediaDevices.getUserMedia({ audio: want });
+  // The default input can be a virtual audio cable rather than the room mic: use the room mic (Jabra) when it's
+  // there. Its mute button stays the person's - nothing here unmutes it.
+  const jabra = (await navigator.mediaDevices.enumerateDevices()).find(d => d.kind === "audioinput" && /jabra/i.test(d.label));
+  if (jabra && !/jabra/i.test(stream.getAudioTracks()[0]?.label || "")) {
+    stream.getTracks().forEach(t => t.stop());
+    stream = await navigator.mediaDevices.getUserMedia({ audio: { ...want, deviceId: { exact: jabra.deviceId } } });
+  }
+  micLabel = stream.getAudioTracks()[0]?.label || "the browser's default mic";
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const src = ctx.createMediaStreamSource(stream);
+  const proc = ctx.createScriptProcessor(2048, 1, 1);
+  mic = { stream, ctx, src, proc, onchunk: null };
+  proc.onaudioprocess = e => mic && mic.onchunk && mic.onchunk(new Float32Array(e.inputBuffer.getChannelData(0)));
+  src.connect(proc); proc.connect(ctx.destination);
+  return mic;
+}
+function releaseMic(afterMs = 60000) {
+  clearTimeout(micIdle);
+  micIdle = setTimeout(() => {
+    if (!mic || rec) return;
+    mic.proc.disconnect(); mic.src.disconnect(); mic.stream.getTracks().forEach(t => t.stop()); mic.ctx.close();
+    mic = null;
+  }, afterMs);
+}
+async function startRec(onLive) {
+  const m = await ensureMic();
+  const chunks = [];
+  rec = { chunks, rate: m.ctx.sampleRate, t0: performance.now() };
+  m.onchunk = c => { chunks.push(c); if (chunks.length === 1 && onLive) onLive(); };
+}
+async function stopRec() {
+  await new Promise(r => setTimeout(r, 400));          // the tail of the last syllable
+  const { chunks, rate, t0 } = rec; rec = null;
+  if (mic) mic.onchunk = null;
+  releaseMic();
+  if (performance.now() - t0 < 750) return null;        // 0.4 s tail + at least ~0.35 s of name
+  const n = chunks.reduce((a, c) => a + c.length, 0), all = new Float32Array(n);
+  let o = 0; for (const c of chunks) { all.set(c, o); o += c.length; }
+  return wavBlob(downsample(all, rate, 16000), 16000);
+}
+function downsample(x, from, to) {
+  if (from === to) return x;
+  const r = from / to, n = Math.floor(x.length / r), y = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const s = Math.floor(i * r), e = Math.min(x.length, Math.floor((i + 1) * r));
+    let acc = 0; for (let j = s; j < e; j++) acc += x[j];
+    y[i] = acc / Math.max(1, e - s);
+  }
+  return y;
+}
+function wavBlob(x, rate) {
+  const buf = new ArrayBuffer(44 + x.length * 2), v = new DataView(buf);
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, "RIFF"); v.setUint32(4, 36 + x.length * 2, true); w(8, "WAVE"); w(12, "fmt ");
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  w(36, "data"); v.setUint32(40, x.length * 2, true);
+  for (let i = 0; i < x.length; i++) { const s = Math.max(-1, Math.min(1, x[i])); v.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true); }
+  return new Blob([buf], { type: "audio/wav" });
+}
+
+// ── Her listening (paused while you read names at the kiosk) ───────────────
+async function setListening(paused) {
+  try { state.paused = (await (await api("/admin/names/listening", { paused, minutes: 10 })).json()).paused; } catch (e) {}
+  showListening();
+}
+function showListening() {
+  $("listenBtn").textContent = state.paused ? "Her listening: paused — resume" : "Pause her listening";
+  $("listenBtn").classList.toggle("rec", state.paused);
+}
+
+// ── The list ───────────────────────────────────────────────────────────────
+// How consistently her voice says it that way - measured silently (5 takes
+// through the recognizer); nothing you need to listen to.
+const takesText = (right, n) => right == null ? "" :
+  `<span class="${right >= state.majority ? "ok" : right >= n / 2 ? "meh" : "no"}"
+     title="Measured automatically: her voice said it ${n} times and it came out this way ${right} times. Low means she'll sometimes get it wrong in conversation even if the example you heard was right.">right ${right} of ${n} times</span>`;
+function sourcesText(it) {
+  if (it.other_ipa) return `dictionary <span class="ipa">/${esc(it.ipa)}/</span> · LLM <span class="ipa">/${esc(it.other_ipa)}/</span>`;
+  return `${esc(it.source || "target")} <span class="ipa">/${esc(it.ipa)}/</span>`;
+}
+const BADGE = { review: "review", unresolved: "still wrong", listen: "worth a listen" };
+function cardHtml(it, pos) {
+  const says = it.says && it.says.length ? it.says.map(s => `~${esc(s)}`).join(" / ") : "—";
+  const proposal = it.proposal ? `<div class="line">Proposal <span class="ipa" title="From the background check, which judges by a transcription of her sounds - it can't hear stress or pacing; trust your ear">(background check)</span>: <b>${esc(it.proposal)}</b> ${takesText(it.proposal_right, it.takes)}
+      ${playBtn(it.proposal)} <button class="good" data-use="${esc(it.proposal)}">Use it</button></div>` : "";
+  const recorded = it.recorded ? `<div class="line">You said it: <span class="ipa">${esc(it.recorded)}</span></div>` : "";
+  return `<div class="card" id="card-${esc(it.word)}" data-word="${esc(it.word)}">
+    <div class="head"><span class="rank">${pos + 1}.</span><span class="word">${esc(it.word)}</span>
+      ${it.mentions != null ? `<span class="uses" title="How many times the knowledge base uses this word">${it.mentions}×</span>` : ""}
+      <span class="badge ${it.status}">${BADGE[it.status] || it.status}</span></div>
+    <div class="line">She says <b>${says}</b> ${takesText(it.right_as_spelled, it.takes)} ${playBtn(it.word, "as spelled")}</div>
+    <div class="line">${sourcesText(it)}</div>
+    ${proposal}${recorded}
+    <div class="actions">
+      <button data-say="1">🎙 Say it</button>
+      <input type="text" placeholder="Type a respelling…" data-typed="1">
+      <button class="play" data-playtyped="1" title="Hear her say what you typed (one example)">▶</button>
+      <button class="good" data-usetyped="1">Use it</button>
+      <button data-try="1" title="Optional: her voice says it 5 times silently and the recognizer counts how often it comes out right - a few seconds, nothing to listen to">Check</button>
+      <button data-fine="1" title="Right after a take you like (▶ as spelled, a proposal, or what you typed): keeps her to that take - tries spellings until one makes her say it that way nearly every time">She's fine</button>
+    </div>
+    <div class="result"></div>
+  </div>`;
+}
+function renderSettled() {
+  $("nSettled").textContent = `(${state.settled.length})`;
+  $("settled").innerHTML = state.settled.map(s => `<div class="card"><b>${esc(s.word)}</b> = ${esc(s.respelling)}
+      ${playBtn(s.respelling)}<span class="file" title="${esc(s.file)}">${esc(s.file.split(/[\\/]/).slice(-2).join("/"))}</span></div>`).join("")
+    || `<div class="card" style="color:var(--text-faint)">None yet.</div>`;
+}
+async function load() {
+  const d = await (await api("/admin/names/list")).json();
+  Object.assign(state, { items: d.items, settled: d.settled, takes: d.takes, majority: d.majority, paused: d.listening_paused,
+                         rare: d.rare || 0, minMentions: d.min_mentions });
+  const c = d.checker;
+  $("status").innerHTML = `${d.kb ? `KB <b>${esc(d.kb)}</b>` : "No KB loaded"} · check ${c.enabled ? "on" : "<b>off</b>"}:
+    ${c.checked} words checked — ${c.ok} right, ${c.fixed} fixed, ${c.review} for review, ${c.unresolved} still wrong ·
+    fixes go to <span class="ipa" title="${esc(d.writes_to)}">${esc(d.writes_to.split(/[\\/]/).slice(-2).join("/"))}</span>`;
+  $("nItems").textContent = `(${state.items.length})`;
+  state.checkerOn = c.enabled;
+  renderOrder(); renderItems();
+  renderSettled(); showListening();
+  pollQueue();
+  $("nConfirmed").textContent = `(${d.confirmed.length})`;
+  $("confirmed").innerHTML = d.confirmed.map(c => c.decision === "set"
+      ? `<span><b>${esc(c.word)}</b> → ${esc(c.spoken)}</span>` : `<span>${esc(c.word)} ✓</span>`).join(" · ")
+    || `<span style="color:var(--text-faint)">None yet.</span>`;
+}
+$("sayConfirmed").onclick = async () => {
+  const b = $("sayConfirmed");
+  try {
+    const d = await (await api("/admin/names/say_confirmed", {})).json();
+    b.textContent = d.queued ? `🔊 Queued ${d.queued} — she starts within 5 s` : "Nothing confirmed yet";
+  } catch (e) { alert("Couldn't queue: " + e.message); }
+  setTimeout(() => { b.textContent = "🔊 Have her say them at the kiosk"; }, 8000);
+};
+$("playConfirmed").onclick = async () => {
+  const b = $("playConfirmed"); b.disabled = true; b.textContent = "…her voice is preparing them (a few seconds per name)";
+  try {
+    const blob = await (await api("/admin/names/confirmed.wav")).blob();
+    player.src = URL.createObjectURL(blob); await player.play();
+  } catch (e) { alert("Couldn't play: " + e.message); }
+  finally { b.disabled = false; b.textContent = "▶ Hear the confirmed names in a row"; }
+};
+
+// ── Order: the words the knowledge base uses most come first; rarely used ones aren't shown ─
+function renderOrder() {
+  $("order").textContent = state.minMentions == null ? "" : "Most used first: the number by each word is how many times the knowledge base uses it."
+    + (state.rare ? ` ${state.rare} words it uses fewer than ${state.minMentions} times aren't shown.` : "");
+}
+function renderItems() {
+  $("items").innerHTML = state.items.map((it, k) => cardHtml(it, k)).join("")
+    || `<div class="card" style="color:var(--text-faint)">Nothing waiting. ${state.checkerOn === false ? "The check is off ([kb] pronunciation_check), so nothing new is found." : ""}</div>`;
+}
+
+// ── Acting on a name ───────────────────────────────────────────────────────
+function resultBox(card, html) { const r = card.querySelector(".result"); r.innerHTML = html; r.classList.add("show"); }
+async function useSpelling(word, spelling) {
+  const d = await (await api("/admin/names/accept", { word, respelling: spelling })).json();
+  finish(word, `Saved: ${word} = ${spelling}`);
+  state.settled.push({ word, respelling: spelling, file: d.file }); renderSettled();
+}
+// "She's fine" right after a take you liked keeps her to THAT take: the server tries spellings (the one you played,
+// then ones built from the take's sounds) in 8 sentences each and keeps the one whose takes sound like yours.
+async function markFine(word, peg) {
+  const card = document.getElementById(`card-${word}`);
+  const d = await (await api("/admin/names/fine", { word, peg: !!peg })).json();
+  if (d.status === "queued") {
+    if (card) resultBox(card, `In line (${ordinal(d.position || 1)}) - keep going, this card updates when it's done.`);
+    return scheduleQueue(300);
+  }
+  if (d.status !== "ok") return card && resultBox(card, `<span class="no">${esc(d.detail)}</span>`);
+  finish(word, d.detail || "Marked fine.");
+}
+// ── The queue of "She's fine" jobs: one runs at a time, oldest first, each waiting while she talks with someone.
+// The panel above the list shows what's happening; each card shows its own job.
+let queueTimer = null;
+const ordinal = n => n + (["th", "st", "nd", "rd"][(n % 100 - 20) % 10] || ["th", "st", "nd", "rd"][n % 100] || "th");
+function scheduleQueue(ms) { clearTimeout(queueTimer); queueTimer = setTimeout(pollQueue, ms); }
+async function pollQueue() {
+  let d;
+  try { d = await (await fetch("/admin/names/queue")).json(); } catch (e) { return scheduleQueue(5000); }
+  const jobs = d.jobs || [], box = $("jobq");
+  const running = jobs.find(j => j.status === "running"), waiting = jobs.filter(j => j.status === "queued");
+  const latest = {};
+  jobs.forEach(j => { latest[j.word.toLowerCase()] = j; });
+  // a word you've decided since (or one no longer on the list) needs no look, though its job still says "pick"
+  const onList = w => state.items.some(i => i.word.toLowerCase() === w.toLowerCase());
+  const look = Object.values(latest).filter(j => ((j.status === "done" && (j.outcome === "varies" || j.outcome === "pick"))
+                                                  || j.status === "error") && onList(j.word));
+  box.hidden = !jobs.length;
+  if (jobs.length) {
+    const now = running ? `Working on <b>${esc(running.word)}</b> - ${stickProgress(running)}`
+      : waiting.length ? (d.her_busy ? "Waiting - she's talking with someone." : "Starting…") : "Nothing in line.";
+    const done = jobs.filter(j => j.status === "done" && (j.outcome === "set" || j.outcome === "fine")).length;
+    box.innerHTML = `${now}${waiting.length ? ` · <b>${waiting.length}</b> waiting` : ""}${done ? ` · ${done} kept this week` : ""}
+      ${look.length ? `<div>Need a look: ${look.map(j => `<a href="#card-${esc(j.word)}">${esc(j.word)}</a>`).join("")}</div>` : ""}`;
+  }
+  jobs.forEach(showJob);
+  scheduleQueue(running || waiting.length ? 2000 : 20000);
+}
+function showJob(j) {
+  const card = document.getElementById(`card-${j.word}`);
+  const key = `${j.id}|${j.status}|${j.position || ""}|${j.stage || ""}|${j.current || ""}|${j.take || ""}`;
+  if (!card || card.dataset.job === key) return;
+  card.dataset.job = key;
+  const said = j.kind === "voice" && j.you_said ? youSaid(j.word, j.you_said, j.you_heard) : "";
+  if (j.status === "queued") return resultBox(card, said + `In line (${ordinal(j.position || 1)}) - keep going, this card updates when it's done. <button data-unqueue="${esc(j.id)}">Take it out</button>`);
+  if (j.status === "running") return resultBox(card, said + stickProgress(j).replace(/^./, c => c.toUpperCase()));
+  if (j.status === "error") return resultBox(card, `<span class="no">${esc(j.detail || "Stopped.")}</span>`);
+  if (j.status !== "done") return;
+  if (j.outcome === "varies" || j.outcome === "pick") return resultBox(card, said + stickHtml(j));
+  if (!card.classList.contains("done")) {
+    finish(j.word, j.detail);
+    if (j.outcome === "set") { state.settled.push({ word: j.word, respelling: j.respelling, file: j.file }); renderSettled(); }
+  }
+}
+function stickProgress(d) {
+  const what = d.current ? `trying <b>${esc(d.current)}</b> - take ${d.take || 1} of 8 (spelling ${(d.tested || 0) + 1})`
+    : esc(d.stage || "working");
+  const goal = d.kind === "voice" ? "matching your voice" : "keeping her to the take you heard";
+  return `${goal}${d.heard_as ? ` (~${esc(d.heard_as)})` : ""}: ${what}…`;
+}
+function stickHtml(d) {
+  const rows = d.results.map((r, k) => `<div class="opt"><span class="sp">${esc(r.spelling)}</span>
+      ${r.right == null ? `<span class="ipa">#${k + 1} closest</span>` : takesText(r.right, r.takes)} ${playBtn(r.spelling)}
+      <button class="good" data-use="${esc(r.spelling)}">Use it</button></div>`).join("");
+  return `<div class="meh">${esc(d.detail)}</div>${rows}<div class="opt"><button data-fine="anyway" title="Accepts however her voice says it">She's fine anyway</button></div>`;
+}
+function finish(word, msg) {
+  const card = document.getElementById(`card-${word}`);
+  if (card) { resultBox(card, esc(msg)); card.classList.add("done"); card.querySelectorAll("button,input").forEach(b => b.disabled = true); }
+  state.items = state.items.filter(i => i.word !== word); $("nItems").textContent = `(${state.items.length})`;
+  // the card stays in view, greyed, until the next refresh
+}
+function youSaid(word, sounds, heard) {
+  return `<div>You said <b>~${esc(sounds)}</b> <span class="ipa">${esc(heard || "")}</span>
+      <button class="play" data-you="${esc(word)}" title="Hear what the mic caught">▶ you</button>
+      <span class="ipa">(if that's not the whole name, say it again)</span></div>`;
+}
+function calibrationHtml(d) {
+  if (d.status !== "ok") return `<span class="no">${esc(d.detail)}</span>`;
+  return youSaid(d.word, d.sounds_like, d.heard)
+    + `<div>In line (${ordinal(d.queued || 1)}): finding the spelling whose takes in her voice sound closest to you - keep going, this card updates.</div>`;
+}
+async function calibrate(word, blob, card) {
+  const fd = new FormData(); fd.append("word", word); fd.append("audio", blob, "name.wav");
+  if (card) resultBox(card, "Listening to what you said…");
+  const d = await (await api("/admin/names/calibrate", fd)).json();
+  if (card) { resultBox(card, calibrationHtml(d)); card.dataset.job = ""; }
+  if (d.status === "ok") scheduleQueue(300);
+  return d;
+}
+
+document.addEventListener("click", async ev => {
+  const b = ev.target.closest("button"); if (!b) return;
+  const card = b.closest(".card[data-word]"), word = card?.dataset.word;
+  try {
+    if (b.dataset.play !== undefined)       // a take of the name (as spelled or a respelling): kept for "She's fine"
+      return speak(b.dataset.play, b, word || null, !!word && b.dataset.play.toLowerCase() !== word.toLowerCase());
+    if (b.dataset.playtyped || b.dataset.usetyped) {
+      const sp = card.querySelector("[data-typed]").value.trim();
+      if (!sp) return card.querySelector("[data-typed]").focus();
+      return b.dataset.playtyped ? speak(sp, b, word, true) : useSpelling(word, sp);
+    }
+    if (b.dataset.you) { player.src = `/admin/names/recording/${encodeURIComponent(b.dataset.you)}?t=${Date.now()}`; return player.play(); }
+    if (b.dataset.use) return useSpelling(word, b.dataset.use);
+    if (b.dataset.unqueue) {
+      await fetch(`/admin/names/queue/${encodeURIComponent(b.dataset.unqueue)}`, { method: "DELETE" });
+      resultBox(card, "Taken out of the line."); return scheduleQueue(300);
+    }
+    if (b.dataset.fine) return markFine(word, b.dataset.fine !== "anyway" && played.has(word));
+    if (b.dataset.try) {
+      const sp = card.querySelector("[data-typed]").value.trim(); if (!sp) return;
+      resultBox(card, `Checking <b>${esc(sp)}</b> — ${state.takes} takes…`);
+      const d = await (await api("/admin/names/try", { word, spelling: sp })).json();
+      return resultBox(card, d.status !== "ok" ? `<span class="no">${esc(d.detail)}</span>` :
+        `<div class="opt"><span class="sp">${esc(sp)}</span> ${takesText(d.right, d.takes)} (against ${esc(d.against)}) ${playBtn(sp)}
+         <button class="good" data-use="${esc(sp)}">Use it</button> <span class="ipa">${d.says.slice(0, 2).map(s => "~" + esc(s)).join(" / ")}</span></div>`);
+    }
+    if (b.dataset.say) {
+      if (micProblem()) return alert(micProblem());
+      if (!rec) {
+        await setListening(true); b.textContent = "…opening the mic"; b.classList.add("rec");
+        await startRec(() => { b.textContent = "● Say it now — click to stop"; b.title = "Recording from " + micLabel; });
+        if (/cable/i.test(micLabel)) resultBox(card, `<span class="no">Recording from ${esc(micLabel)} - that's a virtual audio cable, not the room mic. Pick the room mic in the browser's site settings (the mic icon in the address bar).</span>`);
+        return;
+      }
+      b.disabled = true; b.textContent = "…";
+      const blob = await stopRec(); b.disabled = false; b.textContent = "🎙 Say it"; b.classList.remove("rec");
+      await setListening(false);
+      if (!blob) return resultBox(card, `<span class="meh">Too short — hold it for the whole name.</span>`);
+      return calibrate(word, blob, card);
+    }
+  } catch (e) { alert(e.message); }
+});
+$("refreshBtn").onclick = () => load();
+$("listenBtn").onclick = () => setListening(!state.paused);
+
+// ── Read the list aloud ────────────────────────────────────────────────────
+let reader = null, keepPaused = null;
+$("readBtn").onclick = async () => {
+  if (micProblem()) return alert(micProblem());
+  const words = state.items.filter(i => !i.recorded).map(i => i.word);   // the list on screen, most used first
+  if (!words.length) return alert("Nothing left to read.");
+  reader = { words, pos: 0, queue: [], busy: false, done: 0 };
+  await setListening(true); keepPaused = setInterval(() => setListening(true), 4 * 60 * 1000);
+  $("reader").hidden = false; showReader();
+};
+function showReader() {
+  $("readerPos").textContent = `${reader.pos + 1} of ${reader.words.length}`;
+  $("readerWord").textContent = reader.words[reader.pos] ?? "Done — results are filling in below.";
+  $("readerQueue").textContent = `${reader.done} checked · ${reader.queue.length + (reader.busy ? 1 : 0)} waiting`;
+}
+async function endReader() {
+  if (rec) await stopRec();
+  releaseMic(0);
+  clearInterval(keepPaused); reader = null; $("reader").hidden = true; await setListening(false);
+}
+async function pump() {
+  if (!reader || reader.busy || !reader.queue.length) return;
+  reader.busy = true; showReader();
+  const { word, blob } = reader.queue.shift();
+  try { await calibrate(word, blob, document.getElementById(`card-${word}`)); } catch (e) {}
+  if (reader) { reader.busy = false; reader.done++; showReader(); pump(); }
+}
+document.addEventListener("keydown", async ev => {
+  if (!reader || ev.target.tagName === "INPUT") return;
+  if (ev.key === "Escape") return endReader();
+  if (ev.key === "ArrowRight" && !rec) { reader.pos++; return showReader(); }
+  if (ev.code !== "Space") return;
+  ev.preventDefault();
+  if (reader.pos >= reader.words.length) return;
+  if (!rec) {
+    $("readerHint").textContent = "…opening the mic";
+    await startRec(() => { $("readerWord").style.color = "var(--bad)"; $("readerHint").innerHTML = "● <b>Say it now</b> — Space to stop"; });
+    return;
+  }
+  const blob = await stopRec(); $("readerWord").style.color = "";
+  $("readerHint").innerHTML = "Press <b>Space</b> to start recording, <b>Space</b> again to stop. <b>→</b> skips, <b>Esc</b> ends.";
+  if (blob) { reader.queue.push({ word: reader.words[reader.pos], blob }); reader.pos++; pump(); }
+  showReader();
+});
+
+const mp = micProblem(); if (mp) { $("micNote").textContent = mp; $("micNote").hidden = false; }
+load().catch(e => $("status").textContent = "Couldn't load: " + e.message);
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# How the avatar SAYS names her voice gets wrong. One per line:
+#     Name = respelling
+# The respelling is only what the voice reads aloud; everything she writes,
+# shows and remembers keeps the real name. Spell it the way it sounds, with
+# hyphens between syllables if that helps, e.g.  Worcestershire = Wooster-sheer
+#
+# This file (next to kiosk_config.ini) is for this kiosk's own words. Names
+# that belong to a knowledge base go in a pronunciations.txt inside the KB
+# folder on its drive, so they travel with it; the drive's entries win.
+# Names in either file are also given to speech recognition, so it hears
+# them too. Changes take effect at the next orchestrator restart.
